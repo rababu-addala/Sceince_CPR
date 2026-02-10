@@ -137,6 +137,16 @@ stop_btn = tk.Button(control_frame, text="STOP",
                      bg="red", fg="white",
                      command=stop_cpr)
 stop_btn.grid(row=0, column=1, padx=20)
+exit_btn = tk.Button(
+    control_frame,
+    text="EXIT",
+    font=("Arial", 18),
+    width=10,
+    height=2,
+    bg="gray",
+    command=on_close
+)
+exit_btn.grid(row=0, column=2, padx=20)
 
 root.protocol("WM_DELETE_WINDOW", on_close)
 root.mainloop()
