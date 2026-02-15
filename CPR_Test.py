@@ -25,6 +25,8 @@ STEPS_PER_MM = STEPS_PER_REV / LEADSCREW_MM_PER_REV
 
 running = False
 rotation_count = 0
+current_profile = None
+buttons = {}
 
 # ================= AGE PROFILES =================
 AGE_PROFILES = {
@@ -33,9 +35,6 @@ AGE_PROFILES = {
     "Teen":   {"depth_mm": 18, "rate": 100},
     "Adult":  {"depth_mm": 20, "rate": 100}
 }
-
-current_profile = None
-buttons = {}
 
 # ================= MOTOR FUNCTIONS =================
 def step_motor(direction, steps, delay):
@@ -52,12 +51,8 @@ def step_motor(direction, steps, delay):
         GPIO.output(STEP, GPIO.LOW)
         sleep(delay)
 
-        # Count rotation
         rotation_count += 1 / STEPS_PER_REV
 
-    rotation_label.config(
-        text=f"Motor Rotations: {rotation_count:.2f}"
-    )
 
 def cpr_loop():
     GPIO.output(EN, GPIO.LOW)
@@ -67,7 +62,6 @@ def cpr_loop():
 
     steps = int(depth * STEPS_PER_MM)
     cycle_time = 60 / rate
-
     delay = max(0.002, cycle_time / (steps * 2))
 
     while running:
@@ -76,40 +70,54 @@ def cpr_loop():
 
     GPIO.output(EN, GPIO.HIGH)
 
+# ================= UI SAFE UPDATE =================
+def update_rotation_display():
+    rotation_label.config(
+        text=f"Motor Rotations: {rotation_count:.2f}"
+    )
+    if running:
+        root.after(200, update_rotation_display)
+
 # ================= UI FUNCTIONS =================
 def select_profile(age):
     global current_profile
+
     current_profile = AGE_PROFILES[age]
 
-    # Highlight selected button
+    # Reset all buttons
     for key in buttons:
         buttons[key].config(bg="SystemButtonFace")
 
+    # Highlight selected
     buttons[age].config(bg="green")
 
     status_label.config(text=f"Selected: {age}")
 
-def stop_cpr():
-    global running
-    running = False
 
-    sleep(0.1)  # Allow motor loop to exit safely
+def start_cpr():
+    global running, rotation_count
 
-    GPIO.output(EN, GPIO.HIGH)  # Disable driver
-    status_label.config(text="STOPPED")
+    if current_profile is None:
+        status_label.config(text="Select age first")
+        return
 
     if not running:
-        running = True
         rotation_count = 0
-        rotation_label.config(text="Motor Rotations: 0.00")
+        running = True
         status_label.config(text="CPR RUNNING")
+
+        update_rotation_display()
+
         threading.Thread(target=cpr_loop, daemon=True).start()
+
 
 def stop_cpr():
     global running
     running = False
+    sleep(0.1)
     GPIO.output(EN, GPIO.HIGH)
     status_label.config(text="STOPPED")
+
 
 def on_close():
     stop_cpr()
@@ -150,11 +158,7 @@ for i, age in enumerate(AGE_PROFILES):
     btn.grid(row=i//2, column=i%2, padx=20, pady=15)
     buttons[age] = btn
 
-status_label = tk.Label(
-    root,
-    text="Status: READY",
-    font=("Arial", 18)
-)
+status_label = tk.Label(root, text="Status: READY", font=("Arial", 18))
 status_label.pack(pady=10)
 
 rotation_label = tk.Label(
