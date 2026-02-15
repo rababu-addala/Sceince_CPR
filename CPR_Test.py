@@ -89,12 +89,14 @@ def select_profile(age):
 
     status_label.config(text=f"Selected: {age}")
 
-def start_cpr():
-    global running, rotation_count
+def stop_cpr():
+    global running
+    running = False
 
-    if current_profile is None:
-        status_label.config(text="Select age group first")
-        return
+    sleep(0.1)  # Allow motor loop to exit safely
+
+    GPIO.output(EN, GPIO.HIGH)  # Disable driver
+    status_label.config(text="STOPPED")
 
     if not running:
         running = True
